@@ -109,6 +109,9 @@ function App() {
   const [isAddVillageOpen, setIsAddVillageOpen] = useState(false);
   const [newVillageName, setNewVillageName] = useState('');
   
+  // Landing Page & Login
+  const [showLogin, setShowLogin] = useState(false);
+  
   // Customer Billing History Drawer / Modal States
   const [historyCustomer, setHistoryCustomer] = useState(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -1164,11 +1167,152 @@ function App() {
   });
 
   // ==========================================
-  // VIEW: AUTHENTICATION LOGIN PANEL (Vibrant modern UI)
+  // VIEW: AUTHENTICATION LOGIN PANEL & LANDING PAGE
   // ==========================================
   if (!currentUser) {
+    if (!showLogin) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+          {/* Header */}
+          <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl shadow-md">
+                  <Tv className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">Mahalaxmi Network</h1>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Premium Cable Services</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => { setLoginRole('admin'); setShowLogin(true); }}
+                  className="hidden sm:block text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  Admin Portal
+                </button>
+                <button 
+                  onClick={() => { setLoginRole('customer'); setShowLogin(true); }}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  Customer Login
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Hero Section */}
+          <main className="flex-grow flex flex-col items-center justify-center px-4 py-20 text-center relative overflow-hidden">
+            {/* Background decorative elements */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-full max-h-[600px] bg-gradient-to-tr from-blue-100/40 to-indigo-50/40 rounded-full blur-3xl -z-10"></div>
+            
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold mb-8 animate-fadeIn">
+              <Star className="h-3.5 w-3.5" /> Trusted by 5000+ Customers
+            </div>
+            
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight max-w-4xl mx-auto leading-tight animate-slideUp">
+              Your Ultimate <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Digital Entertainment</span> Experience
+            </h2>
+            
+            <p className="mt-6 text-lg sm:text-xl text-slate-500 font-medium max-w-2xl mx-auto animate-slideUp" style={{ animationDelay: '100ms' }}>
+              High-definition channels, seamless connectivity, and transparent billing. Manage your subscriptions directly from our intuitive customer portal.
+            </p>
+            
+            <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 animate-slideUp" style={{ animationDelay: '200ms' }}>
+              <button 
+                onClick={() => { setLoginRole('customer'); setShowLogin(true); }}
+                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-base font-extrabold rounded-2xl transition-all shadow-lg shadow-blue-500/25 active:scale-95 flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center"
+              >
+                Access Customer Portal <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto w-full animate-fadeIn" style={{ animationDelay: '400ms' }}>
+              <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-all">
+                <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 mb-5">
+                  <Tv className="h-8 w-8" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900 mb-2">HD Channels</h3>
+                <p className="text-sm text-slate-500 font-medium">Crystal clear picture quality with 500+ premium and regional channels.</p>
+              </div>
+              <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-all">
+                <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-600 mb-5">
+                  <Shield className="h-8 w-8" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900 mb-2">Secure Billing</h3>
+                <p className="text-sm text-slate-500 font-medium">View receipts, track your plans, and make hassle-free renewals online.</p>
+              </div>
+              <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-all">
+                <div className="p-4 bg-amber-50 rounded-2xl text-amber-600 mb-5">
+                  <HeadphonesIcon className="h-8 w-8" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900 mb-2">24/7 Support</h3>
+                <p className="text-sm text-slate-500 font-medium">Quick complaint resolution directly through our automated WhatsApp gateway.</p>
+              </div>
+            </div>
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-slate-950 text-slate-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-slate-900">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl shadow-md">
+                    <Tv className="h-5 w-5 text-white" />
+                  </div>
+                  <h4 className="text-lg font-black text-white tracking-tight">Mahalaxmi Network</h4>
+                </div>
+                <p className="text-xs font-medium text-slate-500 max-w-xs leading-relaxed">
+                  Providing premium digital cable services and un-interrupted entertainment to thousands of households.
+                </p>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Contact Info</h4>
+                <ul className="space-y-3 text-sm font-medium">
+                  <li className="flex items-start gap-3">
+                    <Phone className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                    <div>
+                      <p>LAXMIDHARA SAHOO</p>
+                      <a href="tel:+919777546420" className="hover:text-blue-400 transition-colors">+91 9777546420</a>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <Mail className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                    <a href="mailto:amareshasahoo@gmail.com" className="hover:text-blue-400 transition-colors">amareshasahoo@gmail.com</a>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <MapPin className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                    <p>Siaria, Siaria Bada Sahi, 754037</p>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Portals</h4>
+                <ul className="space-y-2 text-sm font-medium">
+                  <li><button onClick={() => { setLoginRole('customer'); setShowLogin(true); }} className="hover:text-blue-400 transition-colors cursor-pointer">Customer Login</button></li>
+                  <li><button onClick={() => { setLoginRole('admin'); setShowLogin(true); }} className="hover:text-blue-400 transition-colors cursor-pointer">Administrator Panel</button></li>
+                </ul>
+              </div>
+            </div>
+            <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-800 text-center flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-semibold">
+              <p>© 2026 Mahalaxmi Network. All Rights Reserved.</p>
+              <p>Designed & Developed with precision.</p>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
     return (
-      <div className="min-h-screen bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 antialiased font-sans">
+      <div className="min-h-screen bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 antialiased font-sans relative">
+        <button 
+          onClick={() => setShowLogin(false)}
+          className="absolute top-6 left-6 p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 transition-all cursor-pointer backdrop-blur-md border border-white/10"
+          title="Back to Home"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
         <div className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl overflow-hidden shadow-2xl p-6 sm:p-8 animate-scaleUp">
           <div className="text-center mb-6">
             <div className="inline-flex bg-gradient-to-tr from-blue-600 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-blue-500/20 mb-3">
@@ -1905,9 +2049,9 @@ function App() {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
                       <th className="px-6 py-4">Customer Details</th>
-                      <th className="px-6 py-4">Plan & Cost</th>
+                      <th className="px-6 py-4">Equipment</th>
+                      <th className="px-6 py-4">Plan & Channels</th>
                       <th className="px-6 py-4">Status & Billing</th>
-                      <th className="px-6 py-4 text-center">Language</th>
                       <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -1930,8 +2074,26 @@ function App() {
                         return (
                           <tr key={customer.id} className="hover:bg-slate-50/50 bg-white transition-colors">
                             <td className="px-6 py-4.5">
-                              <div className="font-bold text-slate-900">{customer.name}</div>
+                              <div className="font-bold text-slate-900 flex items-center gap-2">
+                                {customer.name}
+                                {customer.language_preference === 'OD' && <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-500 font-bold border border-slate-200">ODIA</span>}
+                              </div>
                               <div className="text-xs text-slate-500 font-semibold mt-0.5">{displayPhone(customer.phone_number)}</div>
+                              {customer.village_details && (
+                                <div className="text-[10px] text-indigo-600 font-bold flex items-center gap-1 mt-1.5 bg-indigo-50 px-2 py-0.5 rounded-full w-max border border-indigo-100">
+                                  <Building2 className="h-3 w-3" /> {customer.village_details.name}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4.5">
+                              {customer.setup_box_number || customer.setup_box_brand ? (
+                                <div className="flex flex-col gap-0.5">
+                                  {customer.setup_box_brand && <div className="text-xs font-bold text-slate-800">{customer.setup_box_brand}</div>}
+                                  {customer.setup_box_number && <div className="text-[10px] text-slate-500 font-mono bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded w-max">{customer.setup_box_number}</div>}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">No equipment</span>
+                              )}
                             </td>
                             <td className="px-6 py-4.5">
                               <div className="font-semibold text-slate-800">
@@ -1940,6 +2102,20 @@ function App() {
                               <div className="text-xs text-blue-600 font-bold mt-0.5">
                                 ₹{price} {customer.price_override && '(Override)'}
                               </div>
+                              {customer.plan_details?.channels && (
+                                <div className="flex flex-wrap gap-1 mt-2 max-w-[200px]">
+                                  {customer.plan_details.channels.split(',').slice(0, 3).map((ch, i) => ch.trim() && (
+                                    <span key={i} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[9px] font-bold border border-blue-100 rounded">
+                                      {ch.trim()}
+                                    </span>
+                                  ))}
+                                  {customer.plan_details.channels.split(',').length > 3 && (
+                                    <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 text-slate-500 text-[9px] font-bold rounded">
+                                      +{customer.plan_details.channels.split(',').length - 3} more
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4.5">
                               <div className="flex items-center gap-2">
@@ -1971,12 +2147,6 @@ function App() {
                               <div className="text-xs text-slate-500 mt-1.5 font-semibold">
                                 Expiry: {customer.expiry_date || 'N/A'}
                               </div>
-                            </td>
-                            <td className="px-6 py-4.5 text-center">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">
-                                <Languages className="h-3.5 w-3.5 text-slate-500" />
-                                {customer.language_preference === 'OD' ? 'Odia' : 'English'}
-                              </span>
                             </td>
                             <td className="px-6 py-4.5 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -2045,16 +2215,32 @@ function App() {
                       {/* Customer Header Info */}
                       <div className="flex items-start justify-between">
                         <div>
-                          <h4 className="font-extrabold text-base text-slate-900">{customer.name}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-base text-slate-900">{customer.name}</h4>
+                            {customer.language_preference === 'OD' && <span className="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 text-[9px] text-slate-500 font-bold">ODIA</span>}
+                          </div>
                           <p className="text-xs text-slate-500 font-bold mt-0.5">{displayPhone(customer.phone_number)}</p>
+                          {customer.village_details && (
+                            <div className="text-[10px] text-indigo-600 font-bold flex items-center gap-1 mt-1.5 bg-indigo-50 px-2 py-0.5 rounded-full w-max border border-indigo-100">
+                              <Building2 className="h-3 w-3" /> {customer.village_details.name}
+                            </div>
+                          )}
                         </div>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-[10px] font-extrabold text-slate-700">
-                          {customer.language_preference === 'OD' ? 'Odia' : 'English'}
-                        </span>
                       </div>
 
+                      {/* Equipment Info */}
+                      {(customer.setup_box_number || customer.setup_box_brand) && (
+                        <div className="flex flex-col gap-0.5 bg-slate-50 border border-slate-100 p-2 rounded-xl mt-1">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Equipment</p>
+                          <div className="flex items-center gap-2">
+                            {customer.setup_box_brand && <span className="text-xs font-bold text-slate-700">{customer.setup_box_brand}</span>}
+                            {customer.setup_box_number && <span className="text-[10px] font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-600">{customer.setup_box_number}</span>}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Subscription Details */}
-                      <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-3 rounded-xl border border-slate-100">
+                      <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-3 rounded-xl border border-slate-100 mt-1">
                         <div>
                           <p className="text-[10px] text-slate-500 font-bold uppercase">Plan Package</p>
                           <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
@@ -2067,6 +2253,22 @@ function App() {
                             ₹{price} {customer.price_override && '(Override)'}
                           </p>
                         </div>
+                        {customer.plan_details?.channels && (
+                          <div className="col-span-2 pt-1 border-t border-slate-200/50 mt-1">
+                            <div className="flex flex-wrap gap-1">
+                              {customer.plan_details.channels.split(',').slice(0, 4).map((ch, i) => ch.trim() && (
+                                <span key={i} className="px-1.5 py-0.5 bg-white border border-slate-200 text-slate-600 text-[9px] font-bold rounded">
+                                  {ch.trim()}
+                                </span>
+                              ))}
+                              {customer.plan_details.channels.split(',').length > 4 && (
+                                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded">
+                                  +{customer.plan_details.channels.split(',').length - 4}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Status & Due Dates */}

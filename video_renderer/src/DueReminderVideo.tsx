@@ -4,8 +4,22 @@ import {
   useVideoConfig, 
   interpolate, 
   spring,
-  AbsoluteFill
+  AbsoluteFill,
+  delayRender,
+  continueRender
 } from 'remotion';
+
+const waitForFont = delayRender();
+const font = new FontFace(
+  "Noto Sans Oriya",
+  "url(https://fonts.gstatic.com/s/notosansoriya/v26/x3djYyEw-HivM_1bXU91nN_44z-u0D0z.woff2)"
+);
+font.load().then(() => {
+  document.fonts.add(font);
+  continueRender(waitForFont);
+}).catch(() => {
+  continueRender(waitForFont);
+});
 
 interface Props {
   name: string;
@@ -48,7 +62,7 @@ export const DueReminderVideo: React.FC<Props> = ({ name, price, date, lang }) =
       style={{
         backgroundColor: '#07090e',
         background: 'radial-gradient(circle, #0f1322 0%, #06080d 100%)',
-        fontFamily: 'sans-serif',
+        fontFamily: lang === 'OD' ? "'Noto Sans Oriya', sans-serif" : "sans-serif",
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
