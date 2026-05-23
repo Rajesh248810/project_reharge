@@ -80,6 +80,10 @@ class WhatsAppService:
         Sends message to OpenClaw local WhatsApp gateway.
         Falls back to mock simulation successfully if gateway is offline.
         """
+        if not phone_number or not str(phone_number).strip():
+            print("[OPENCLAW GATEWAY] Skipped sending: Customer does not have a registered mobile/WhatsApp number.")
+            return False, "Skipped: Customer does not have a registered mobile/WhatsApp number."
+
         api_url = os.getenv('OPENCLAW_API_URL', 'http://localhost:18789/api')
         api_key = os.getenv('OPENCLAW_API_KEY', '')
         
@@ -469,3 +473,37 @@ class WhatsAppService:
         image.save(out_path, "PNG")
         
         return str(out_path.resolve())
+
+    @classmethod
+    def send_greeting_message(cls, customer):
+        """
+        Sends a professional welcome greeting to the new customer via WhatsApp.
+        """
+        name = customer.name
+        lang = customer.language_preference
+        phone = customer.phone_number
+
+        if lang == 'OD':
+            text = (
+                f"ପ୍ରିୟ {name},\n\n"
+                f"ମହାଲକ୍ଷ୍ମୀ ନେଟୱର୍କକୁ ଆପଣଙ୍କୁ ସ୍ୱାଗତ! 🌸 ଆପଣଙ୍କର ସବସ୍କ୍ରିପସନ୍ ଆକାଉଣ୍ଟ ସଫଳତାର ସହ ପଞ୍ଜୀକୃତ ହୋଇଛି।\n\n"
+                f"📞 ସହାୟତା ପାଇଁ ଯୋଗାଯୋଗ ବିବରଣୀ:\n"
+                f"• ନାମ: ଲକ୍ଷ୍ମୀଧର ସାହୁ (LAXMIDHARA SAHOO)\n"
+                f"• ମୋବାଇଲ୍: +91 9777546420\n"
+                f"• ଇମେଲ୍: amareshasahoo@gmail.com\n"
+                f"• ଠିକଣା: Siaria, Siaria Bada Sahi, 754037\n\n"
+                f"ଆମ ସହିତ ଯୋଡି ହୋଇଥିବାରୁ ଧନ୍ୟବାଦ! (ମହାଲକ୍ଷ୍ମୀ ନେଟୱର୍କ)"
+            )
+        else:
+            text = (
+                f"Dear {name},\n\n"
+                f"Welcome to Mahalaxmi Network! 🌸 Your subscription account has been successfully registered.\n\n"
+                f"📞 Contact Details for Support:\n"
+                f"• Name: LAXMIDHARA SAHOO (ଲକ୍ଷ୍ମୀଧର ସାହୁ)\n"
+                f"• Mobile: +91 9777546420\n"
+                f"• Email: amareshasahoo@gmail.com\n"
+                f"• Address: Siaria, Siaria Bada Sahi, 754037\n\n"
+                f"Thank you for choosing us! (Mahalaxmi Network)"
+            )
+
+        return cls.send_to_openclaw(phone, text)

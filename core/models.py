@@ -39,7 +39,8 @@ class Customer(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=150)
-    phone_number = models.CharField(max_length=15)  # E.g. +919876543210
+    phone_number = models.CharField(max_length=15, blank=True, null=True)  # E.g. +919876543210
+    password = models.CharField(max_length=128, blank=True, null=True, help_text="Custom portal password. Fallback is last 4 digits of phone")
     plan = models.ForeignKey(Plan, null=True, blank=True, on_delete=models.SET_NULL, related_name='customers')
     price_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Custom price if different from plan price")
     activation_date = models.DateField()
@@ -83,6 +84,20 @@ class Customer(models.Model):
             self.expiry_date = calculate_expiry_date(self.activation_date, self.plan.duration_days)
 
         super().save(*args, **kwargs)
+
+        if is_new and self.phone_number:
+            from django.apps import apps
+            WhatsAppLogModel = apps.get_model('core', 'WhatsAppLog')
+            from core.queue_service import WhatsAppQueueManager
+            
+            log = WhatsAppLogModel.objects.create(
+                customer=self,
+                message_type='GREETING',
+                message_content="Auto-generated welcome greeting",
+                language=self.language_preference,
+                status='PENDING'
+            )
+            WhatsAppQueueManager().enqueue_message(log.id, 'GREETING')
 
         if is_paid_changed_to_true or (is_new and self.is_paid):
             price = self.price_override if self.price_override is not None else (self.plan.price if self.plan else 0)
@@ -128,6 +143,7 @@ class WhatsAppLog(models.Model):
         ('REMINDER', 'Due Reminder'),
         ('RECEIPT', 'Payment Receipt'),
         ('CUSTOM', 'Custom Message'),
+        ('GREETING', 'Welcome Greeting'),
     ]
     STATUS_CHOICES = [
         ('SENT', 'Sent Successfully'),

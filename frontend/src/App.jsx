@@ -27,7 +27,12 @@ import {
   LogOut,
   Download,
   Lock,
-  User
+  User,
+  Mail,
+  MapPin,
+  Phone,
+  Camera,
+  Upload
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
@@ -148,6 +153,15 @@ function App() {
   // Settings Password Changer State
   const [changeOldPassword, setChangeOldPassword] = useState('');
   const [changeNewPassword, setChangeNewPassword] = useState('');
+
+  // Customer Portal Password & Complaint States
+  const [customerNewPassword, setCustomerNewPassword] = useState('');
+  const [customerPasswordLoading, setCustomerPasswordLoading] = useState(false);
+  const [complaintType, setComplaintType] = useState('ଟିଭି ଆସୁନି (TV aasuni)');
+  const [complaintDetails, setComplaintDetails] = useState('');
+  const [complaintImage, setComplaintImage] = useState(null);
+  const [complaintImagePreview, setComplaintImagePreview] = useState(null);
+  const [complaintLoading, setComplaintLoading] = useState(false);
   const [changeConfirmPassword, setChangeConfirmPassword] = useState('');
   const [changePasswordMsg, setChangePasswordMsg] = useState(null);
 
@@ -660,18 +674,21 @@ function App() {
 
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
-    if (!newCustomer.name || !newCustomer.phone_number || !newCustomer.activation_date) return;
+    if (!newCustomer.name || !newCustomer.activation_date) return;
 
-    // Clean phone number: keep digits and fallback prepends +91 for 10-digit indian numbers
-    let formattedPhone = newCustomer.phone_number.trim().replace(/\D/g, '');
-    if (formattedPhone.length === 10) {
-      formattedPhone = `+91${formattedPhone}`;
-    } else if (formattedPhone.length === 12 && formattedPhone.startsWith('91')) {
-      formattedPhone = `+${formattedPhone}`;
-    } else if (!newCustomer.phone_number.startsWith('+')) {
-      formattedPhone = `+${formattedPhone}`;
-    } else {
-      formattedPhone = newCustomer.phone_number;
+    let formattedPhone = null;
+    if (newCustomer.phone_number && newCustomer.phone_number.trim()) {
+      const trimmedPhone = newCustomer.phone_number.trim();
+      let digits = trimmedPhone.replace(/\D/g, '');
+      if (digits.length === 10) {
+        formattedPhone = `+91${digits}`;
+      } else if (digits.length === 12 && digits.startsWith('91')) {
+        formattedPhone = `+${digits}`;
+      } else if (!trimmedPhone.startsWith('+')) {
+        formattedPhone = `+${digits}`;
+      } else {
+        formattedPhone = trimmedPhone;
+      }
     }
 
     if (isUsingMock) {
@@ -683,6 +700,7 @@ function App() {
         id: Date.now().toString(),
         name: newCustomer.name,
         phone_number: formattedPhone,
+        password: newCustomer.password || null,
         plan: newCustomer.plan,
         plan_details: selectedPlanDetails || null,
         price_override: newCustomer.price_override ? parseFloat(newCustomer.price_override) : null,
@@ -700,6 +718,7 @@ function App() {
       setNewCustomer({
         name: '',
         phone_number: '',
+        password: '',
         plan: '',
         price_override: '',
         activation_date: new Date().toISOString().split('T')[0],
@@ -715,6 +734,7 @@ function App() {
       const payload = {
         ...newCustomer,
         phone_number: formattedPhone,
+        password: newCustomer.password === '' ? null : newCustomer.password,
         price_override: newCustomer.price_override === '' ? null : newCustomer.price_override,
         plan: newCustomer.plan === '' ? null : newCustomer.plan
       };
@@ -729,6 +749,7 @@ function App() {
         setNewCustomer({
           name: '',
           phone_number: '',
+          password: '',
           plan: '',
           price_override: '',
           activation_date: new Date().toISOString().split('T')[0],
@@ -747,17 +768,21 @@ function App() {
 
   const handleEditCustomer = async (e) => {
     e.preventDefault();
-    if (!editingCustomer.name || !editingCustomer.phone_number) return;
+    if (!editingCustomer.name) return;
 
-    let formattedPhone = editingCustomer.phone_number.trim().replace(/\D/g, '');
-    if (formattedPhone.length === 10) {
-      formattedPhone = `+91${formattedPhone}`;
-    } else if (formattedPhone.length === 12 && formattedPhone.startsWith('91')) {
-      formattedPhone = `+${formattedPhone}`;
-    } else if (!editingCustomer.phone_number.startsWith('+')) {
-      formattedPhone = `+${formattedPhone}`;
-    } else {
-      formattedPhone = editingCustomer.phone_number;
+    let formattedPhone = null;
+    if (editingCustomer.phone_number && editingCustomer.phone_number.trim()) {
+      const trimmedPhone = editingCustomer.phone_number.trim();
+      let digits = trimmedPhone.replace(/\D/g, '');
+      if (digits.length === 10) {
+        formattedPhone = `+91${digits}`;
+      } else if (digits.length === 12 && digits.startsWith('91')) {
+        formattedPhone = `+${digits}`;
+      } else if (!trimmedPhone.startsWith('+')) {
+        formattedPhone = `+${digits}`;
+      } else {
+        formattedPhone = trimmedPhone;
+      }
     }
 
     if (isUsingMock) {
@@ -788,6 +813,7 @@ function App() {
       const payload = {
         name: editingCustomer.name,
         phone_number: formattedPhone,
+        password: editingCustomer.password === '' || editingCustomer.password === null ? null : editingCustomer.password,
         plan: editingCustomer.plan === '' ? null : editingCustomer.plan,
         price_override: editingCustomer.price_override === '' || editingCustomer.price_override === null ? null : editingCustomer.price_override,
         activation_date: editingCustomer.activation_date,
@@ -869,6 +895,86 @@ function App() {
       console.error("Failed to fetch billing history", err);
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const handleCustomerChangePassword = async (e, customerId) => {
+    e.preventDefault();
+    if (!customerNewPassword.trim()) {
+      triggerAlert('Password cannot be empty', 'error');
+      return;
+    }
+    setCustomerPasswordLoading(true);
+
+    if (isUsingMock) {
+      setTimeout(() => {
+        setCustomerPasswordLoading(false);
+        setCustomerNewPassword('');
+        triggerAlert('Password changed successfully (Mock Mode)!');
+      }, 500);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/customers/${customerId}/change_password/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_password: customerNewPassword })
+      });
+      const data = await res.json();
+      setCustomerPasswordLoading(false);
+      if (res.ok) {
+        setCustomerNewPassword('');
+        triggerAlert(data.message || 'Password successfully changed!');
+      } else {
+        triggerAlert(data.error || 'Failed to update password', 'error');
+      }
+    } catch (err) {
+      setCustomerPasswordLoading(false);
+      triggerAlert('Network error updating password', 'error');
+    }
+  };
+
+  const handleCustomerSubmitComplaint = async (e, customerId) => {
+    e.preventDefault();
+    setComplaintLoading(true);
+
+    if (isUsingMock) {
+      setTimeout(() => {
+        setComplaintLoading(false);
+        setComplaintDetails('');
+        setComplaintImage(null);
+        setComplaintImagePreview(null);
+        triggerAlert('Complaint submitted successfully (Mock Mode)!');
+      }, 800);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('problem_type', complaintType);
+      formData.append('details', complaintDetails);
+      if (complaintImage) {
+        formData.append('image', complaintImage);
+      }
+
+      const res = await fetch(`${API_BASE}/customers/${customerId}/file_complaint/`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      setComplaintLoading(false);
+      if (res.ok) {
+        setComplaintDetails('');
+        setComplaintImage(null);
+        setComplaintImagePreview(null);
+        triggerAlert(data.message || 'Complaint submitted successfully!');
+      } else {
+        triggerAlert(data.error || 'Failed to submit complaint', 'error');
+      }
+    } catch (err) {
+      setComplaintLoading(false);
+      triggerAlert('Network error submitting complaint', 'error');
     }
   };
 
@@ -973,7 +1079,7 @@ function App() {
 
   const filteredCustomers = customers.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          c.phone_number.includes(searchQuery);
+                          (c.phone_number || '').includes(searchQuery);
     
     if (filterPaid === 'paid') return matchesSearch && c.is_paid;
     if (filterPaid === 'unpaid') return matchesSearch && !c.is_paid;
@@ -1276,12 +1382,189 @@ function App() {
                   Downloads a curated, branded image receipt of your last 7 statement logs for personal file records.
                 </p>
               </section>
+
+              {/* Contact Details & Direct Call dial card */}
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-extrabold text-slate-950 uppercase tracking-wider">Contact Operator</h3>
+                <div className="glass-card p-5 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden flex flex-col gap-3.5">
+                  <div className="flex flex-col gap-1.5">
+                    <h4 className="font-extrabold text-slate-900 text-sm">ଲକ୍ଷ୍ମୀଧର ସାହୁ / LAXMIDHARA SAHOO</h4>
+                    <p className="text-[10px] text-blue-600 font-extrabold uppercase tracking-wider">Founder & Chief Operator</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-semibold text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-blue-600 shrink-0" />
+                      <span>+91 9777546420</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-blue-600 shrink-0" />
+                      <span>amareshasahoo@gmail.com</span>
+                    </div>
+                    <div className="flex items-start gap-2 sm:col-span-2">
+                      <MapPin className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                      <span>Siaria, Siaria Bada Sahi, 754037</span>
+                    </div>
+                  </div>
+                  <a
+                    href="tel:+919777546420"
+                    className="mt-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black tracking-wider uppercase shadow-md flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  >
+                    <Phone className="h-4 w-4 animate-bounce" />
+                    Direct Call / Call Now
+                  </a>
+                </div>
+              </section>
+
+              {/* Professional Complaint & Help System */}
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-extrabold text-slate-950 uppercase tracking-wider">Help Desk / ଟିଭି ସମସ୍ୟା ସମାଧାନ</h3>
+                <form onSubmit={(e) => handleCustomerSubmitComplaint(e, activeCustomer.id)} className="glass-card p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Select Common Problem / ସମସ୍ୟା ବାଛନ୍ତୁ</label>
+                    <select
+                      value={complaintType}
+                      onChange={(e) => setComplaintType(e.target.value)}
+                      className="w-full px-4 py-3 border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer"
+                    >
+                      <option value="ଟିଭି ଆସୁନି (TV aasuni / No TV Picture)">ଟିଭି ଆସୁନି (TV aasuni / No TV Picture)</option>
+                      <option value="ଟିଭି ଓପନ ହେଉନି (TV open hauni / TV Not Turning On)">ଟିଭି ଓପନ ହେଉନି (TV open hauni / TV Not Turning On)</option>
+                      <option value="ସେଟଅପ୍ ବକ୍ସ ଖରାପ ହୋଇଗଲା (Setup box kharap heigala / Setup Box Damaged)">ସେଟଅପ୍ ବକ୍ସ ଖରାପ ହୋଇଗଲା (Setup box kharap heigala)</option>
+                      <option value="ରିମୋଟ୍ ଖରାପ ହୋଇଗଲା (Remote kharap heigala / Remote Not Working)">ରିମୋଟ୍ ଖରାପ ହୋଇଗଲା (Remote kharap heigala)</option>
+                      <option value="ସେଟଅପ୍ ବକ୍ସରେ ଲାଲ୍ ଲାଇଟ୍ ଜଳୁଛି (Setupbox red light jaluchi / Red Light on Setup Box)">ସେଟଅପ୍ ବକ୍ସରେ ଲାଲ୍ ଲାଇଟ୍ ଜଳୁଛି (Setupbox red light jaluchi)</option>
+                      <option value="ନୋ ସିଗନାଲ୍ ଦେଖାଉଛି (No signal dekhauchi / No Signal Error)">ନୋ ସିଗନାଲ୍ ଦେଖାଉଛି (No signal dekhauchi)</option>
+                      <option value="ଅନ୍ୟାନ୍ୟ ସମସ୍ୟା (Other Issue)">ଅନ୍ୟାନ୍ୟ ସମସ୍ୟା (Other Issue)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Describe Problem Detail / ସବିଶେଷ ବିବରଣୀ ଲେଖନ୍ତୁ</label>
+                    <textarea
+                      value={complaintDetails}
+                      onChange={(e) => setComplaintDetails(e.target.value)}
+                      placeholder="ସମସ୍ୟା ବିଷୟରେ କିଛି ଲେଖନ୍ତୁ (E.g. Since morning setup box is showing red light, remote is not responding, etc.)"
+                      className="w-full px-4 py-3 border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all min-h-[80px]"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Upload Error Photo / ଟିଭି କିମ୍ବା ବକ୍ସର ଫଟୋ ଅପଲୋଡ୍ କରନ୍ତୁ</label>
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Open Camera / File Input Trigger */}
+                        <label className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-xs font-black rounded-xl border border-slate-200 flex items-center gap-1.5 cursor-pointer transition-all shadow-sm">
+                          <Camera className="h-4 w-4" />
+                          Take Photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="user"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                const file = e.target.files[0];
+                                setComplaintImage(file);
+                                setComplaintImagePreview(URL.createObjectURL(file));
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                        <label className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-xs font-black rounded-xl border border-slate-200 flex items-center gap-1.5 cursor-pointer transition-all shadow-sm">
+                          <Upload className="h-4 w-4" />
+                          Select Image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                const file = e.target.files[0];
+                                setComplaintImage(file);
+                                setComplaintImagePreview(URL.createObjectURL(file));
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      {complaintImagePreview && (
+                        <div className="relative border border-slate-200 rounded-xl overflow-hidden h-14 w-14 shrink-0 bg-slate-100">
+                          <img src={complaintImagePreview} alt="Attached Preview" className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setComplaintImage(null);
+                              setComplaintImagePreview(null);
+                            }}
+                            className="absolute top-0 right-0 bg-red-500 hover:bg-red-600 text-white rounded-bl-lg p-0.5 transition-colors cursor-pointer border-none flex items-center justify-center"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                      <span className="text-[10px] text-slate-400 font-semibold leading-relaxed">
+                        {complaintImage ? `Attached: ${complaintImage.name}` : "No photo attached yet. Open camera or select a photo of the TV error."}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={complaintLoading}
+                    className="py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-400 text-white rounded-xl text-xs font-black tracking-wider uppercase shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
+                  >
+                    {complaintLoading ? (
+                      <>
+                        <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Submitting Ticket...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-3.5 w-3.5" />
+                        Submit Support Ticket / ସମସ୍ୟା ଜଣାନ୍ତୁ
+                      </>
+                    )}
+                  </button>
+                </form>
+              </section>
+
+              {/* Portal Access Security changes */}
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-extrabold text-slate-950 uppercase tracking-wider">Change Login Password</h3>
+                <form onSubmit={(e) => handleCustomerChangePassword(e, activeCustomer.id)} className="glass-card p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-end gap-3">
+                  <div className="flex-1 w-full flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Enter New Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                      <input
+                        type="password"
+                        value={customerNewPassword}
+                        onChange={(e) => setCustomerNewPassword(e.target.value)}
+                        placeholder="Enter your customized secure portal password"
+                        className="w-full pl-9 pr-4 py-3 border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={customerPasswordLoading}
+                    className="px-6 py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-black tracking-wider uppercase shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] shrink-0"
+                  >
+                    {customerPasswordLoading ? (
+                      <>
+                        <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Password"
+                    )}
+                  </button>
+                </form>
+              </section>
             </>
           )}
         </main>
 
         <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-[10px] font-bold tracking-wider text-slate-500">
-          MAHALAXMI NETWORK CUSTOMER SERVICES &copy; 2026
+          mahalaxmi network all right .... &copy; 2026
         </footer>
       </div>
     );
@@ -2170,7 +2453,7 @@ function App() {
 
       {/* FOOTER */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-[10px] font-bold tracking-wider text-slate-500">
-        POWERED BY DJANGO + REACT + TAILWIND + REMOTION | AIVEN & NEON PRODUCTION GATEWAYS &copy; 2026
+        mahalaxmi network all right .... &copy; 2026
       </footer>
 
       {/* QUICK PAYMENT ACTION SELECTOR POPUP */}
@@ -2466,17 +2749,16 @@ function App() {
 
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Mobile Number *
+                    Mobile Number (Optional)
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="E.g. 7894376226 (No need of +91)"
+                    placeholder="E.g. 7894376226 (Optional)"
                     value={newCustomer.phone_number}
                     onChange={(e) => setNewCustomer({ ...newCustomer, phone_number: e.target.value })}
                     className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
                   />
-                  <span className="text-[10px] text-slate-400 font-bold mt-1 block">Indian country code +91 will be added automatically.</span>
+                  <span className="text-[10px] text-slate-400 font-bold mt-1 block">Indian country code +91 will be added automatically. Leave blank if none.</span>
                 </div>
               </div>
 
@@ -2508,6 +2790,21 @@ function App() {
                     placeholder="E.g. 240.00"
                     value={newCustomer.price_override}
                     onChange={(e) => setNewCustomer({ ...newCustomer, price_override: e.target.value })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Portal Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Custom password (Default: last 4 digits of phone)"
+                    value={newCustomer.password || ''}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, password: e.target.value })}
                     className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
                   />
                 </div>
@@ -2707,16 +3004,16 @@ function App() {
 
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Mobile Number *
+                    Mobile Number (Optional)
                   </label>
                   <input
                     type="text"
-                    required
-                    value={editingCustomer.phone_number.replace('+91', '')}
+                    placeholder="E.g. 7894376226 (Optional)"
+                    value={(editingCustomer.phone_number || '').replace('+91', '')}
                     onChange={(e) => setEditingCustomer({ ...editingCustomer, phone_number: e.target.value })}
                     className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
                   />
-                  <span className="text-[10px] text-slate-400 font-bold mt-1 block">Auto-prefixed with +91 if 10-digit number.</span>
+                  <span className="text-[10px] text-slate-400 font-bold mt-1 block">Auto-prefixed with +91 if 10-digit number. Leave blank if none.</span>
                 </div>
               </div>
 
@@ -2740,13 +3037,28 @@ function App() {
 
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Price Override
+                    Price Override (Optional)
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     value={editingCustomer.price_override || ''}
                     onChange={(e) => setEditingCustomer({ ...editingCustomer, price_override: e.target.value })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Portal Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Custom password (Default: last 4 digits of phone)"
+                    value={editingCustomer.password || ''}
+                    onChange={(e) => setEditingCustomer({ ...editingCustomer, password: e.target.value })}
                     className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
                   />
                 </div>

@@ -32,17 +32,19 @@ class WhatsAppQueueManager:
         self.worker_thread.start()
         logger.info("[QUEUE SERVICE] Sequential background worker thread started successfully.")
 
-    def enqueue_message(self, log_id, action_type, style=None):
+    def enqueue_message(self, log_id, action_type, style=None, extra_data=None):
         """
         Enqueues a message for background dispatch.
         log_id: UUID of the WhatsAppLog object
-        action_type: 'RECEIPT', 'REMINDER', or 'CUSTOM'
+        action_type: 'RECEIPT', 'REMINDER', 'CUSTOM', 'GREETING', or 'COMPLAINT'
         style: the style parameter (e.g. 'video_reminder', 'text_receipt')
+        extra_data: optional dictionary containing additional metadata (e.g. 'media_path', 'target_phone')
         """
         task = {
             'log_id': log_id,
             'action_type': action_type,
-            'style': style
+            'style': style,
+            'extra_data': extra_data
         }
         self.queue.put(task)
         logger.info(f"[QUEUE SERVICE] Enqueued task: {task}. Queue size: {self.queue.qsize()}")
@@ -62,6 +64,7 @@ class WhatsAppQueueManager:
             log_id = task['log_id']
             action_type = task['action_type']
             style = task['style']
+            extra_data = task.get('extra_data', None)
 
             logger.info(f"[QUEUE SERVICE] Processing task: {task}")
             
@@ -103,6 +106,26 @@ class WhatsAppQueueManager:
                         success, msg = WhatsAppService.send_due_reminder(customer)
                 elif action_type == 'CUSTOM':
                     success, msg = WhatsAppService.send_custom_text(customer, log.message_content)
+                elif action_type == 'GREETING':
+                    success, msg = WhatsAppService.send_greeting_message(customer)
+                elif action_type == 'COMPLAINT':
+                    import os
+                    target_phone = extra_data.get('target_phone', '+919777546420') if extra_data else '+919777546420'
+                    media_path = extra_data.get('media_path', None) if extra_data else None
+                    try:
+                        success, msg = WhatsAppService.send_to_openclaw(
+                            phone_number=target_phone,
+                            text=log.message_content,
+                            media_path=media_path
+                        )
+                    finally:
+                        # Auto-delete the temporary uploaded complaint image file immediately after dispatch
+                        if media_path and os.path.exists(media_path):
+                            try:
+                                os.remove(media_path)
+                                logger.info(f"[QUEUE SERVICE] Successfully deleted temporary complaint image: {media_path}")
+                            except Exception as delete_err:
+                                logger.error(f"[QUEUE SERVICE] Failed to delete temporary image: {delete_err}")
 
                 # 3. Update log status based on dispatch result
                 log.status = 'SENT' if success else 'FAILED'

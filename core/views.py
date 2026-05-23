@@ -177,6 +177,87 @@ class CustomerViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="statement_{safe_name}.png"'
         return response
 
+    @action(detail=True, methods=['post'])
+    def change_password(self, request, pk=None):
+        """
+        Updates the customer's portal password.
+        """
+        customer = self.get_object()
+        new_password = request.data.get('new_password', '').strip()
+        
+        if not new_password:
+            return Response({'error': 'Password cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        customer.password = new_password
+        customer.save()
+        
+        return Response({
+            'status': 'success',
+            'message': 'Password successfully changed!'
+        })
+
+    @action(detail=True, methods=['post'])
+    def file_complaint(self, request, pk=None):
+        """
+        Accepts ticket issues, saves uploader image temporarily, triggers load-balanced queue notification.
+        """
+        customer = self.get_object()
+        problem_type = request.data.get('problem_type', 'Other').strip()
+        details = request.data.get('details', '').strip()
+        image_file = request.FILES.get('image', None)
+        
+        temp_path = None
+        if image_file:
+            import uuid
+            from django.conf import settings
+            
+            # Create complaints temp directory
+            complaints_dir = os.path.join(settings.MEDIA_ROOT, 'complaints')
+            os.makedirs(complaints_dir, exist_ok=True)
+            
+            ext = os.path.splitext(image_file.name)[1] or '.png'
+            temp_filename = f"temp_complaint_{customer.id.hex[:10]}_{uuid.uuid4().hex[:10]}{ext}"
+            temp_path = os.path.join(complaints_dir, temp_filename)
+            
+            # Save temporary uploader content
+            with open(temp_path, 'wb+') as destination:
+                for chunk in image_file.chunks():
+                    destination.write(chunk)
+                    
+        # Notification text body sent to operator
+        notification_text = (
+            f"🚨 *NEW CABLE SUPPORT TICKET* 🚨\n\n"
+            f"👤 *Customer*: {customer.name}\n"
+            f"📞 *Mobile*: {customer.phone_number or 'No Number/Smart Device'}\n"
+            f"📍 *Location*: Siaria, Siaria Bada Sahi\n"
+            f"📦 *Active Package*: {customer.plan.name if customer.plan else 'Custom Active Package'}\n\n"
+            f"⚠️ *Issue Description*: {problem_type}\n"
+            f"💬 *Operator Details / Notes*: {details or 'No additional details provided.'}\n\n"
+            f"Please address this complaint immediately!"
+        )
+        
+        # Log complaint tracking entry under customer details
+        log = WhatsAppLog.objects.create(
+            customer=customer,
+            message_type='CUSTOM',
+            message_content=notification_text,
+            language=customer.language_preference,
+            status='PENDING'
+        )
+        
+        # Sequential asynchronous queue dispatch
+        from core.queue_service import WhatsAppQueueManager
+        extra_data = {
+            'target_phone': '+919777546420', # Laxmidhara Sahoo
+            'media_path': temp_path
+        }
+        WhatsAppQueueManager().enqueue_message(log.id, 'COMPLAINT', extra_data=extra_data)
+        
+        return Response({
+            'status': 'success',
+            'message': 'Complaint successfully enqueued! Operator Laxmidhara Sahoo will be notified instantly.'
+        })
+
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """
@@ -276,6 +357,8 @@ def auth_login(request):
         # Find customer matching the digits suffix or prefix
         target_customer = None
         for customer in Customer.objects.all():
+            if not customer.phone_number:
+                continue
             cust_digits = "".join([c for c in customer.phone_number if c.isdigit()])
             if cust_digits.endswith(input_digits) or input_digits.endswith(cust_digits):
                 target_customer = customer
@@ -284,11 +367,15 @@ def auth_login(request):
         if not target_customer:
             return Response({'error': 'No customer found matching this phone number'}, status=status.HTTP_404_NOT_FOUND)
             
-        # Default password is last 4 digits of customer's registered phone
-        cust_phone_digits = "".join([c for c in target_customer.phone_number if c.isdigit()])
-        last_4 = cust_phone_digits[-4:] if len(cust_phone_digits) >= 4 else cust_phone_digits
+        # Check custom password if set, otherwise fallback to last 4 digits of phone
+        if target_customer.password:
+            is_valid_pwd = password == target_customer.password
+        else:
+            cust_phone_digits = "".join([c for c in target_customer.phone_number if c.isdigit()]) if target_customer.phone_number else ""
+            last_4 = cust_phone_digits[-4:] if len(cust_phone_digits) >= 4 else cust_phone_digits
+            is_valid_pwd = password == last_4
         
-        if password == last_4:
+        if is_valid_pwd:
             return Response({
                 'status': 'success',
                 'role': 'customer',
@@ -297,7 +384,8 @@ def auth_login(request):
                 'token': f'customer-session-{target_customer.id.hex}-mock'
             })
         else:
-            return Response({'error': 'Invalid password. Hint: Default password is the last 4 digits of your phone number.'}, status=status.HTTP_401_UNAUTHORIZED)
+            hint = "Invalid password." if target_customer.password else "Invalid password. Hint: Default password is the last 4 digits of your phone number."
+            return Response({'error': hint}, status=status.HTTP_401_UNAUTHORIZED)
             
     else:
         return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
