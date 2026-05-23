@@ -111,11 +111,11 @@ class WhatsAppService:
         
         try:
             # Attempt posting to OpenClaw API
-            # Since user's local instance might be offline, we set a 3-second timeout
+            # Puppeteer/Chromium can take 15-25 seconds to upload media, so we allow 30s
             if files:
-                res = requests.post(f"{api_url}/send", data=payload, files=files, headers=headers, timeout=3)
+                res = requests.post(f"{api_url}/send", data=payload, files=files, headers=headers, timeout=30)
             else:
-                res = requests.post(f"{api_url}/send", data=payload, headers=headers, timeout=3)
+                res = requests.post(f"{api_url}/send", data=payload, headers=headers, timeout=30)
             if res.ok:
                 print(f"[OPENCLAW SUCCESS] Message successfully routed!")
                 return True, "Delivered via OpenClaw Gateway"

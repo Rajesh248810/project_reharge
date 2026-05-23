@@ -32,7 +32,12 @@ import {
   MapPin,
   Phone,
   Camera,
-  Upload
+  Upload,
+  Building2,
+  Tv,
+  Box,
+  Wifi,
+  Star
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
@@ -85,6 +90,7 @@ function App() {
   const [customers, setCustomers] = useState([]);
   const [plans, setPlans] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [villages, setVillages] = useState([]);
   const [stats, setStats] = useState({
     total_customers: 0,
     paid_customers: 0,
@@ -100,6 +106,8 @@ function App() {
   const [isAddPlanOpen, setIsAddPlanOpen] = useState(false);
   const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const [isAddVillageOpen, setIsAddVillageOpen] = useState(false);
+  const [newVillageName, setNewVillageName] = useState('');
   
   // Customer Billing History Drawer / Modal States
   const [historyCustomer, setHistoryCustomer] = useState(null);
@@ -131,7 +139,8 @@ function App() {
   const [newPlan, setNewPlan] = useState({
     name: '',
     price: '',
-    duration_days: 30
+    duration_days: 30,
+    channels: ''
   });
 
   const [customMsg, setCustomMsg] = useState('');
@@ -297,6 +306,14 @@ function App() {
       const statsRes = await fetch(`${API_BASE}/customers/stats/`);
       const statsData = await statsRes.json();
       setStats(statsData);
+
+      try {
+        const villageRes = await fetch(`${API_BASE}/villages/`);
+        if (villageRes.ok) {
+          const villageData = await villageRes.json();
+          setVillages(villageData);
+        }
+      } catch (_) {}
 
       setIsUsingMock(false);
     } catch (err) {
@@ -644,10 +661,11 @@ function App() {
         id: Date.now().toString(),
         name: newPlan.name,
         price: parseFloat(newPlan.price),
-        duration_days: parseInt(newPlan.duration_days)
+        duration_days: parseInt(newPlan.duration_days),
+        channels: newPlan.channels || ''
       };
       setPlans([newlyCreated, ...plans]);
-      setNewPlan({ name: '', price: '', duration_days: 30 });
+      setNewPlan({ name: '', price: '', duration_days: 30, channels: '' });
       setIsAddPlanOpen(false);
       triggerAlert(`Plan "${newlyCreated.name}" added successfully!`);
       return;
@@ -661,7 +679,7 @@ function App() {
       });
       if (res.ok) {
         triggerAlert('Plan created successfully!');
-        setNewPlan({ name: '', price: '', duration_days: 30 });
+        setNewPlan({ name: '', price: '', duration_days: 30, channels: '' });
         setIsAddPlanOpen(false);
         fetchData();
       } else {
@@ -736,7 +754,10 @@ function App() {
         phone_number: formattedPhone,
         password: newCustomer.password === '' ? null : newCustomer.password,
         price_override: newCustomer.price_override === '' ? null : newCustomer.price_override,
-        plan: newCustomer.plan === '' ? null : newCustomer.plan
+        plan: newCustomer.plan === '' ? null : newCustomer.plan,
+        village: newCustomer.village === '' || newCustomer.village == null ? null : newCustomer.village,
+        setup_box_number: newCustomer.setup_box_number === '' ? null : newCustomer.setup_box_number,
+        setup_box_brand: newCustomer.setup_box_brand === '' ? null : newCustomer.setup_box_brand,
       };
 
       const res = await fetch(`${API_BASE}/customers/`, {
@@ -751,6 +772,9 @@ function App() {
           phone_number: '',
           password: '',
           plan: '',
+          village: null,
+          setup_box_number: '',
+          setup_box_brand: '',
           price_override: '',
           activation_date: new Date().toISOString().split('T')[0],
           language_preference: 'OD',
@@ -815,6 +839,9 @@ function App() {
         phone_number: formattedPhone,
         password: editingCustomer.password === '' || editingCustomer.password === null ? null : editingCustomer.password,
         plan: editingCustomer.plan === '' ? null : editingCustomer.plan,
+        village: editingCustomer.village === '' || editingCustomer.village == null ? null : editingCustomer.village,
+        setup_box_number: editingCustomer.setup_box_number === '' ? null : editingCustomer.setup_box_number,
+        setup_box_brand: editingCustomer.setup_box_brand === '' ? null : editingCustomer.setup_box_brand,
         price_override: editingCustomer.price_override === '' || editingCustomer.price_override === null ? null : editingCustomer.price_override,
         activation_date: editingCustomer.activation_date,
         expiry_date: editingCustomer.expiry_date,
@@ -996,6 +1023,56 @@ function App() {
         fetchData();
       } else {
         triggerAlert('Failed to delete billing package.', 'error');
+      }
+    } catch (err) {
+      triggerAlert('Network error', 'error');
+    }
+  };
+
+  const handleCreateVillage = async (e) => {
+    e.preventDefault();
+    if (!newVillageName.trim()) return;
+    if (isUsingMock) {
+      setVillages([{ id: Date.now().toString(), name: newVillageName }, ...villages]);
+      setNewVillageName('');
+      setIsAddVillageOpen(false);
+      triggerAlert(`Village "${newVillageName}" added!`);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/villages/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newVillageName })
+      });
+      if (res.ok) {
+        triggerAlert(`Village "${newVillageName}" created!`);
+        setNewVillageName('');
+        setIsAddVillageOpen(false);
+        fetchData();
+      } else {
+        const err = await res.json();
+        triggerAlert(err.name?.[0] || 'Failed to create village', 'error');
+      }
+    } catch (err) {
+      triggerAlert('Network error', 'error');
+    }
+  };
+
+  const handleDeleteVillage = async (village) => {
+    if (!window.confirm(`Delete village "${village.name}"?`)) return;
+    if (isUsingMock) {
+      setVillages(villages.filter(v => v.id !== village.id));
+      triggerAlert(`Village "${village.name}" deleted.`);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/villages/${village.id}/`, { method: 'DELETE' });
+      if (res.ok) {
+        triggerAlert('Village deleted.');
+        fetchData();
+      } else {
+        triggerAlert('Failed to delete village.', 'error');
       }
     } catch (err) {
       triggerAlert('Network error', 'error');
@@ -1303,6 +1380,66 @@ function App() {
                 </div>
               </section>
 
+              {/* Equipment / Setup Box Info Card */}
+              {(activeCustomer.setup_box_number || activeCustomer.setup_box_brand || activeCustomer.village_details) && (
+                <section className="glass-card p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                      <Box className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">Equipment & Location</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {activeCustomer.village_details && (
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <Building2 className="h-3 w-3" /> Service Area
+                        </p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-0.5">{activeCustomer.village_details.name}</p>
+                      </div>
+                    )}
+                    {activeCustomer.setup_box_brand && (
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <Tv className="h-3 w-3" /> Setup Box Brand
+                        </p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-0.5">{activeCustomer.setup_box_brand}</p>
+                      </div>
+                    )}
+                    {activeCustomer.setup_box_number && (
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <Wifi className="h-3 w-3" /> Device Serial
+                        </p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-0.5 font-mono">{activeCustomer.setup_box_number}</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Channel list grid (shown if plan has channels configured) */}
+              {activeCustomer.plan_details?.channels && activeCustomer.plan_details.channels.trim() && (
+                <section className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
+                      <Star className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">
+                      Your Channel Package — {activeCustomer.plan_details.name}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {activeCustomer.plan_details.channels.split(',').map((ch, idx) => ch.trim() && (
+                      <div key={idx} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0"></div>
+                        <span className="text-xs font-bold text-slate-700 truncate">{ch.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               {/* Dynamic scan to pay box if suspended / unpaid */}
               {!activeCustomer.is_paid && (
                 <section className="glass-card p-6 rounded-3xl bg-red-50/50 border border-red-200 shadow-sm flex flex-col items-center text-center gap-4">
@@ -1564,7 +1701,7 @@ function App() {
         </main>
 
         <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-[10px] font-bold tracking-wider text-slate-500">
-          mahalaxmi network all right .... &copy; 2026
+          © 2026 Mahalaxmi Network. All Rights Reserved.
         </footer>
       </div>
     );
@@ -1688,6 +1825,7 @@ function App() {
           {[
             { id: 'dashboard', label: 'Customers', icon: Users },
             { id: 'plans', label: 'Billing Plans', icon: CreditCard },
+            { id: 'villages', label: 'Villages', icon: Building2 },
             { id: 'logs', label: 'WhatsApp Logs', icon: History },
             { id: 'settings', label: 'System Settings', icon: Settings },
           ].map(tab => {
@@ -2047,6 +2185,29 @@ function App() {
                       <div className="text-3xl font-black text-slate-900 mt-4">
                         ₹{plan.price}
                       </div>
+                      <div className="text-[10px] text-slate-400 font-semibold mt-1">
+                        {customers.filter(c => c.plan === plan.id || c.plan_details?.id === plan.id).length} active subscribers
+                      </div>
+
+                      {plan.channels && plan.channels.trim() && (
+                        <div className="mt-4">
+                          <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <Star className="h-3 w-3 text-blue-500" /> Included Channels
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {plan.channels.split(',').slice(0, 6).map((ch, i) => ch.trim() && (
+                              <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100 rounded-full">
+                                {ch.trim()}
+                              </span>
+                            ))}
+                            {plan.channels.split(',').length > 6 && (
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-full">
+                                +{plan.channels.split(',').length - 6} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="border-t border-slate-100 mt-6 pt-4 flex items-center justify-between text-xs text-slate-500 font-bold">
@@ -2066,7 +2227,93 @@ function App() {
           </section>
         )}
 
-        {/* Tab Content 3: WhatsApp Logs */}
+        {/* Tab Content 3: Villages */}
+        {selectedTab === 'villages' && (
+          <section className="flex flex-col gap-4 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-900">Village / Area Management</h2>
+                <p className="text-xs text-slate-500 font-semibold">Create and manage the service area villages for customer assignment</p>
+              </div>
+              <button
+                onClick={() => setIsAddVillageOpen(true)}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-bold rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-sm"
+              >
+                <Plus className="h-4.5 w-4.5" />
+                Add Village
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {villages.length === 0 ? (
+                <div className="col-span-3 glass-card p-12 text-center text-slate-400 font-semibold rounded-2xl bg-white border border-slate-200">
+                  <Building2 className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+                  No villages configured yet. Add your first service area village.
+                </div>
+              ) : (
+                villages.map(village => (
+                  <div key={village.id} className="glass-card p-5 rounded-2xl bg-white border border-slate-200 flex items-center justify-between group hover:border-blue-300 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
+                        <Building2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-slate-900 text-sm">{village.name}</h4>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                          {customers.filter(c => c.village === village.id).length} customers
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteVillage(village)}
+                      className="p-2 bg-red-50 hover:bg-red-100 border border-red-100 text-red-500 rounded-xl transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                      title="Delete Village"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add Village Modal */}
+            {isAddVillageOpen && (
+              <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="glass-card rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 bg-white animate-scaleUp shadow-xl">
+                  <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                    <h3 className="font-extrabold text-slate-900 flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-blue-600" />
+                      Add New Village
+                    </h3>
+                    <button onClick={() => setIsAddVillageOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleCreateVillage} className="p-6 flex flex-col gap-4">
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Village / Area Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="E.g. Siaria, Marsaghai, Kendrapara"
+                        value={newVillageName}
+                        onChange={(e) => setNewVillageName(e.target.value)}
+                        className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <button type="button" onClick={() => setIsAddVillageOpen(false)} className="px-4 py-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl text-xs font-bold cursor-pointer">Cancel</button>
+                      <button type="submit" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl cursor-pointer shadow-sm">Save Village</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Tab Content 4: WhatsApp Logs */}
         {selectedTab === 'logs' && (
           <section className="flex flex-col gap-4 animate-fadeIn">
             <div>
@@ -2453,7 +2700,7 @@ function App() {
 
       {/* FOOTER */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-[10px] font-bold tracking-wider text-slate-500">
-        mahalaxmi network all right .... &copy; 2026
+        © 2026 Mahalaxmi Network. All Rights Reserved.
       </footer>
 
       {/* QUICK PAYMENT ACTION SELECTOR POPUP */}
@@ -2808,6 +3055,50 @@ function App() {
                     className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Village / Area (Optional)
+                  </label>
+                  <select
+                    value={newCustomer.village || ''}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, village: e.target.value || null })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300 font-bold bg-white"
+                  >
+                    <option value="">Select village (optional)</option>
+                    {villages.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Setup Box Serial / Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="E.g. SB-2024-001234"
+                    value={newCustomer.setup_box_number || ''}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, setup_box_number: e.target.value })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Setup Box Brand / Model (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="E.g. Airtel Xstream, Tata Play"
+                    value={newCustomer.setup_box_brand || ''}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, setup_box_brand: e.target.value })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -3062,6 +3353,50 @@ function App() {
                     className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Village / Area (Optional)
+                  </label>
+                  <select
+                    value={editingCustomer.village || ''}
+                    onChange={(e) => setEditingCustomer({ ...editingCustomer, village: e.target.value || null })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300 font-bold bg-white"
+                  >
+                    <option value="">Select village (optional)</option>
+                    {villages.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Setup Box Serial / Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="E.g. SB-2024-001234"
+                    value={editingCustomer.setup_box_number || ''}
+                    onChange={(e) => setEditingCustomer({ ...editingCustomer, setup_box_number: e.target.value })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Setup Box Brand / Model (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="E.g. Airtel Xstream, Tata Play"
+                    value={editingCustomer.setup_box_brand || ''}
+                    onChange={(e) => setEditingCustomer({ ...editingCustomer, setup_box_brand: e.target.value })}
+                    className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                  />
+                </div>
               </div>
 
               {/* CRITICAL MANUALLY ADJUSTABLE DATES SECTION */}
@@ -3224,6 +3559,20 @@ function App() {
                     className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full text-center font-extrabold border-slate-300"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                  Channel List (Optional — comma separated)
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="E.g. Star Plus, Zee TV, Sony, Colors, Star Sports, Discovery..."
+                  value={newPlan.channels || ''}
+                  onChange={(e) => setNewPlan({ ...newPlan, channels: e.target.value })}
+                  className="glass-input px-3.5 py-2.5 text-sm rounded-xl w-full border-slate-300"
+                />
+                <span className="text-[10px] text-slate-400 font-bold mt-1 block">Channels visible to the customer in their portal.</span>
               </div>
 
               <div className="border-t border-slate-100 mt-4 pt-4 flex items-center justify-end gap-3">

@@ -9,10 +9,14 @@ from rest_framework.response import Response
 from django.db.models import Sum, Q
 from django.contrib.auth.hashers import make_password, check_password
 
-from .models import Plan, Customer, SystemSetting, WhatsAppLog, Transaction
-from .serializers import PlanSerializer, CustomerSerializer, SystemSettingSerializer, WhatsAppLogSerializer, TransactionSerializer
+from .models import Plan, Customer, SystemSetting, WhatsAppLog, Transaction, Village
+from .serializers import PlanSerializer, CustomerSerializer, SystemSettingSerializer, WhatsAppLogSerializer, TransactionSerializer, VillageSerializer
 from .whatsapp_service import WhatsAppService
 from .queue_service import WhatsAppQueueManager
+
+class VillageViewSet(viewsets.ModelViewSet):
+    queryset = Village.objects.all().order_by('name')
+    serializer_class = VillageSerializer
 
 class PlanViewSet(viewsets.ModelViewSet):
     queryset = Plan.objects.all().order_by('-created_at')

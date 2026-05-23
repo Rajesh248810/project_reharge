@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import Plan, Customer, SystemSetting, WhatsAppLog, Transaction
+from .models import Plan, Customer, SystemSetting, WhatsAppLog, Transaction, Village
+
+class VillageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Village
+        fields = '__all__'
 
 class PlanSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,8 +18,14 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(serializers.ModelSerializer):
     plan_details = PlanSerializer(source='plan', read_only=True)
+    village_details = VillageSerializer(source='village', read_only=True)
     plan = serializers.PrimaryKeyRelatedField(
         queryset=Plan.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    village = serializers.PrimaryKeyRelatedField(
+        queryset=Village.objects.all(),
         required=False,
         allow_null=True
     )
@@ -25,6 +36,8 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = [
             'id', 'name', 'phone_number', 'plan', 'plan_details',
+            'village', 'village_details',
+            'setup_box_number', 'setup_box_brand',
             'price_override', 'activation_date', 'expiry_date',
             'is_paid', 'language_preference', 'reminder_days_before',
             'days_left', 'transactions', 'created_at'

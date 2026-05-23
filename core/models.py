@@ -2,11 +2,20 @@ import uuid
 from django.db import models
 from datetime import timedelta
 
+class Village(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=150, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
 class Plan(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     duration_days = models.IntegerField(default=30)
+    channels = models.TextField(blank=True, null=True, help_text="Comma-separated list of channels included in this plan")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -42,6 +51,9 @@ class Customer(models.Model):
     phone_number = models.CharField(max_length=15, blank=True, null=True)  # E.g. +919876543210
     password = models.CharField(max_length=128, blank=True, null=True, help_text="Custom portal password. Fallback is last 4 digits of phone")
     plan = models.ForeignKey(Plan, null=True, blank=True, on_delete=models.SET_NULL, related_name='customers')
+    village = models.ForeignKey(Village, null=True, blank=True, on_delete=models.SET_NULL, related_name='customers')
+    setup_box_number = models.CharField(max_length=100, blank=True, null=True, help_text="Setup box serial/device number")
+    setup_box_brand = models.CharField(max_length=100, blank=True, null=True, help_text="Setup box brand/model name")
     price_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Custom price if different from plan price")
     activation_date = models.DateField()
     expiry_date = models.DateField(blank=True, null=True)
