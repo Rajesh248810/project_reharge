@@ -1,0 +1,36 @@
+services:
+  # 1. Django Backend API Service
+  - type: web
+    name: project-recharge-backend
+    env: python
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    startCommand: "gunicorn cable_assistant.wsgi:application"
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_oEnzChTF5yi6@ep-young-grass-aol4l7y5-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+      - key: OPENCLAW_API_URL
+        sync: false # User will set this in Render dashboard once the WhatsApp service URL is generated
+      - key: OPENCLAW_API_KEY
+        value: "cbdc55533da5a4bec979ffa4eccd281451b1cb43d9f78b09"
+      - key: REMOTION_RENDER_DIR
+        value: "./media/renders"
+      - key: SECRET_KEY
+        generateValue: true
+
+  # 2. Node.js Embedded WhatsApp Gateway Service
+  - type: web
+    name: project-recharge-whatsapp-gateway
+    env: docker
+    dockerContext: whatsapp_gateway
+    dockerfilePath: whatsapp_gateway/Dockerfile
+    disk:
+      name: whatsapp-auth-session
+      mountPath: /usr/src/app/.wwebjs_auth
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: "18789"

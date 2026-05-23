@@ -1,0 +1,20 @@
+{
+  "name": "video_renderer",
+  "version": "1.0.0",
+  "description": "Remotion React Video Generator for Cable Receipts & Reminders",
+  "main": "render.js",
+  "scripts": {
+    "build": "remotion bundle src/index.ts build/bundle.js"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@remotion/bundler": "^4.0.464",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,41 @@
+# Python virtual environments and caches
+venv/
+.venv/
+.remotion/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django local files and static/media files
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/renders/
+media/upi_qr_*.png
+media/tx_history_*.png
+.env
+
+# Node.js dependencies and builds
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# WhatsApp session data (Highly Sensitive)
+whatsapp_gateway/.wwebjs_auth/
+whatsapp_gateway/.wwebjs_cache/
+whatsapp_gateway/uploads/
+
+# IDE / Editor configurations
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
