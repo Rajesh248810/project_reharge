@@ -12,6 +12,25 @@ class Plan(models.Model):
     def __str__(self):
         return f"{self.name} (Rs. {self.price} - {self.duration_days} Days)"
 
+import calendar
+import datetime
+
+def calculate_expiry_date(activation_date, duration_days):
+    """
+    Computes date-wise expiry date by adding exact months if the duration 
+    is a multiple of 30 days (standard monthly billing), otherwise adds exact days.
+    Clamps day bounds for shorter target months (e.g. Jan 31 + 1 month -> Feb 28).
+    """
+    if duration_days % 30 == 0:
+        months_to_add = duration_days // 30
+        month = activation_date.month - 1 + months_to_add
+        year = activation_date.year + month // 12
+        month = month % 12 + 1
+        day = min(activation_date.day, calendar.monthrange(year, month)[1])
+        return datetime.date(year, month, day)
+    else:
+        return activation_date + datetime.timedelta(days=duration_days)
+
 class Customer(models.Model):
     LANGUAGE_CHOICES = [
         ('EN', 'English'),
@@ -61,7 +80,7 @@ class Customer(models.Model):
 
         # Calculate expiry_date if new, if it's null, or if activation date/plan/payment toggled to paid
         if (is_new or not self.expiry_date or activation_changed or is_paid_changed_to_true) and self.activation_date and self.plan:
-            self.expiry_date = self.activation_date + timedelta(days=self.plan.duration_days)
+            self.expiry_date = calculate_expiry_date(self.activation_date, self.plan.duration_days)
 
         super().save(*args, **kwargs)
 

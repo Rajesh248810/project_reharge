@@ -52,6 +52,22 @@ const MOCK_LOGS = [
   { id: '2', customer_name: 'Manoj Kumar Sahoo', message_type: 'RECEIPT', message_content: 'ଧନ୍ୟବାଦ Manoj Kumar Sahoo! ଆପଣଙ୍କର Rs. 350 ର ପେମେଣ୍ଟ ମିଳିଗଲା। ପ୍ଲାନ [2026-05-31] ପର୍ଯ୍ୟନ୍ତ ସଫଳତାର ସହ ନବୀକରଣ ହୋଇଛି।', language: 'OD', sent_at: '2026-05-01T09:30:00Z', status: 'SENT' },
 ];
 
+const calculateExpiryDateJS = (activationDateStr, durationDays) => {
+  const actDate = new Date(activationDateStr);
+  if (durationDays % 30 === 0) {
+    const monthsToAdd = durationDays / 30;
+    const day = actDate.getDate();
+    actDate.setMonth(actDate.getMonth() + monthsToAdd);
+    if (actDate.getDate() !== day) {
+      actDate.setDate(0); // Clamp to end of previous month
+    }
+    return actDate.toISOString().split('T')[0];
+  } else {
+    actDate.setDate(actDate.getDate() + durationDays);
+    return actDate.toISOString().split('T')[0];
+  }
+};
+
 function App() {
   // Session Authentication state
   const [currentUser, setCurrentUser] = useState(() => {
@@ -79,6 +95,12 @@ function App() {
   const [isAddPlanOpen, setIsAddPlanOpen] = useState(false);
   const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
+  
+  // Customer Billing History Drawer / Modal States
+  const [historyCustomer, setHistoryCustomer] = useState(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyTransactions, setHistoryTransactions] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   
   // Unified Message Action Drawer
   const [messageDrawerCustomer, setMessageDrawerCustomer] = useState(null);
@@ -452,14 +474,14 @@ function App() {
         setIsSending(false);
         const updated = customers.map(c => {
           if (c.id === customer.id) {
-            const nextExpiry = new Date();
-            nextExpiry.setDate(nextExpiry.getDate() + (c.plan_details?.duration_days || 30));
+            const duration = c.plan_details?.duration_days || 30;
+            const calculatedExpiry = calculateExpiryDateJS(new Date(), duration);
             return {
               ...c,
               is_paid: true,
               activation_date: new Date().toISOString().split('T')[0],
-              expiry_date: nextExpiry.toISOString().split('T')[0],
-              days_left: (c.plan_details?.duration_days || 30)
+              expiry_date: calculatedExpiry,
+              days_left: duration
             };
           }
           return c;
@@ -654,8 +676,8 @@ function App() {
 
     if (isUsingMock) {
       const selectedPlanDetails = plans.find(p => p.id === newCustomer.plan);
-      const calculatedExpiry = new Date(newCustomer.activation_date);
-      calculatedExpiry.setDate(calculatedExpiry.getDate() + (selectedPlanDetails?.duration_days || 30));
+      const duration = selectedPlanDetails?.duration_days || 30;
+      const calculatedExpiry = calculateExpiryDateJS(newCustomer.activation_date, duration);
 
       const newlyCreated = {
         id: Date.now().toString(),
@@ -665,7 +687,7 @@ function App() {
         plan_details: selectedPlanDetails || null,
         price_override: newCustomer.price_override ? parseFloat(newCustomer.price_override) : null,
         activation_date: newCustomer.activation_date,
-        expiry_date: calculatedExpiry.toISOString().split('T')[0],
+        expiry_date: calculatedExpiry,
         is_paid: true,
         language_preference: newCustomer.language_preference,
         reminder_days_before: parseInt(newCustomer.reminder_days_before),
@@ -817,6 +839,36 @@ function App() {
       }
     } catch (err) {
       triggerAlert('Network error', 'error');
+    }
+  };
+
+  const handleOpenHistory = async (customer) => {
+    setHistoryCustomer(customer);
+    setIsHistoryOpen(true);
+    setLoadingHistory(true);
+    setHistoryTransactions([]);
+
+    if (isUsingMock) {
+      setTimeout(() => {
+        setHistoryTransactions([
+          { id: 't1', plan_name: customer.plan_details?.name || 'BASIC', amount: customer.price_override || customer.plan_details?.price || 180, payment_date: customer.activation_date, expiry_date: customer.expiry_date },
+          { id: 't2', plan_name: customer.plan_details?.name || 'BASIC', amount: customer.price_override || customer.plan_details?.price || 180, payment_date: '2026-04-18', expiry_date: customer.activation_date },
+        ]);
+        setLoadingHistory(false);
+      }, 500);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/customers/${customer.id}/transactions/`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryTransactions(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch billing history", err);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -1518,6 +1570,13 @@ function App() {
                                   Send WhatsApp
                                 </button>
                                 <button
+                                  onClick={() => handleOpenHistory(customer)}
+                                  className="p-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-xl transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-center"
+                                  title="View payment & statement ledger history"
+                                >
+                                  <History className="h-3.5 w-3.5" />
+                                </button>
+                                <button
                                   onClick={() => {
                                     setEditingCustomer({ ...customer });
                                     setIsEditCustomerOpen(true);
@@ -1624,23 +1683,31 @@ function App() {
                       </div>
 
                       {/* Unified Touch Actions */}
-                      <div className="grid grid-cols-3 gap-1.5 mt-1.5 border-t border-slate-100 pt-3">
+                      <div className="grid grid-cols-4 gap-1 mt-1.5 border-t border-slate-100 pt-3">
                         <button
                           onClick={() => {
                             setMessageDrawerCustomer(customer);
                           }}
-                          className="py-3 px-1 bg-indigo-50 active:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl text-[10px] font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className="py-3 px-1 bg-indigo-50 active:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 cursor-pointer"
                           title="Send WhatsApp"
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                           WP
                         </button>
                         <button
+                          onClick={() => handleOpenHistory(customer)}
+                          className="py-3 px-1 bg-blue-50 active:bg-blue-100 border border-blue-200 text-blue-700 rounded-xl text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                          title="Billing History"
+                        >
+                          <History className="h-3.5 w-3.5" />
+                          History
+                        </button>
+                        <button
                           onClick={() => {
                             setEditingCustomer({ ...customer });
                             setIsEditCustomerOpen(true);
                           }}
-                          className="py-3 px-1 bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className="py-3 px-1 bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer"
                           title="Edit Customer"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
@@ -1648,7 +1715,7 @@ function App() {
                         </button>
                         <button
                           onClick={() => handleDeleteCustomer(customer)}
-                          className="py-3 px-1 bg-red-50 active:bg-red-100 border border-red-100 text-red-600 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className="py-3 px-1 bg-red-50 active:bg-red-100 border border-red-100 text-red-600 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 cursor-pointer"
                           title="Delete Customer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -2503,6 +2570,102 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CUSTOMER BILLING & PAYMENT HISTORY STATEMENT */}
+      {isHistoryOpen && historyCustomer && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card rounded-2xl w-full max-w-2xl overflow-hidden border border-slate-200 bg-white animate-scaleUp shadow-xl">
+            <div className="px-6 py-4.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <h3 className="font-extrabold text-slate-950 flex items-center gap-2">
+                <History className="h-5 w-5 text-blue-600" />
+                Customer Billing Statement
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsHistoryOpen(false);
+                  setHistoryCustomer(null);
+                  setHistoryTransactions([]);
+                }} 
+                className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col gap-4 text-left">
+              {/* Customer summary */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-base">{historyCustomer.name}</h4>
+                  <p className="text-xs text-slate-500 font-bold mt-0.5">{displayPhone(historyCustomer.phone_number)}</p>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Current Package</span>
+                  <p className="font-extrabold text-sm text-slate-800">
+                    {historyCustomer.plan_details ? historyCustomer.plan_details.name : 'Custom Active Package'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Transactions list */}
+              <div>
+                <h5 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">
+                  Transaction Ledger Statements
+                </h5>
+                <div className="max-h-[300px] overflow-y-auto border border-slate-200 rounded-xl">
+                  {loadingHistory ? (
+                    <div className="py-12 text-center text-slate-400 font-semibold flex flex-col items-center justify-center gap-2">
+                      <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
+                      Fetching payment statement history...
+                    </div>
+                  ) : historyTransactions.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400 font-semibold">
+                      No payment transactions recorded for this customer.
+                    </div>
+                  ) : (
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 py-3">Payment Date</th>
+                          <th className="px-4 py-3">Billing Package</th>
+                          <th className="px-4 py-3">Amount</th>
+                          <th className="px-4 py-3">Expiry Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs">
+                        {historyTransactions.map((tx) => (
+                          <tr key={tx.id} className="hover:bg-slate-50 bg-white">
+                            <td className="px-4 py-3 font-semibold text-slate-700">{tx.payment_date || tx.created_at?.split('T')[0]}</td>
+                            <td className="px-4 py-3 font-medium text-slate-600">{tx.plan_name}</td>
+                            <td className="px-4 py-3 font-extrabold text-emerald-600">₹{tx.amount}</td>
+                            <td className="px-4 py-3 font-bold text-slate-700">{tx.expiry_date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+
+              {/* Premium download statement card */}
+              <div className="border-t border-slate-200 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-[10px] text-slate-400 font-bold leading-normal text-center sm:text-left max-w-sm">
+                  Click the button to download a branded PIL-rendered ledger statement card for this customer's last 7 payments.
+                </p>
+                <a
+                  href={`${API_BASE}/customers/${historyCustomer.id}/history_image/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-3 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Statement Card
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}
