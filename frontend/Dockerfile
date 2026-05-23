@@ -1,5 +1,5 @@
 # Stage 1: Build the React application
-FROM node:18-slim AS builder
+FROM node:20-slim AS builder
 
 # Accept build arguments for production APIs
 ARG VITE_API_BASE
