@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 1. Django Backend API & Remotion Rendering Engine
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: project-recharge-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend-media:/usr/src/app/media
+    env_file:
+      - .env
+    environment:
+      - DEBUG=False
+      - ALLOWED_HOSTS=api.srv1380471.hstgr.cloud,localhost,127.0.0.1
+      - OPENCLAW_API_URL=https://whatsapp.srv1380471.hstgr.cloud/api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.recharge-backend.entrypoints=websecure"
+      - "traefik.http.routers.recharge-backend.rule=Host(`api.srv1380471.hstgr.cloud`)"
+      - "traefik.http.routers.recharge-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.recharge-backend.loadbalancer.server.port=8000"
+
+  # 2. Embedded WhatsApp Gateway (Express + whatsapp-web.js)
+  whatsapp-gateway:
+    build:
+      context: ./whatsapp_gateway
+      dockerfile: Dockerfile
+    container_name: project-recharge-whatsapp
+    restart: always
+    ports:
+      - "18789:18789"
+    volumes:
+      - whatsapp-auth:/usr/src/app/.wwebjs_auth
+    environment:
+      - PORT=18789
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.recharge-whatsapp.entrypoints=websecure"
+      - "traefik.http.routers.recharge-whatsapp.rule=Host(`whatsapp.srv1380471.hstgr.cloud`)"
+      - "traefik.http.routers.recharge-whatsapp.tls.certresolver=letsencrypt"
+      - "traefik.http.services.recharge-whatsapp.loadbalancer.server.port=18789"
+
+volumes:
+  backend-media:
+  whatsapp-auth:
