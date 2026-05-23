@@ -18,7 +18,8 @@ services:
       - "traefik.http.routers.recharge-frontend.entrypoints=websecure"
       - "traefik.http.routers.recharge-frontend.rule=Host(`srv1380471.hstgr.cloud`)"
       - "traefik.http.routers.recharge-frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.recharge-frontend.loadbalancer.server.port=80"
+      # Traefik is in host network mode - must route via host loopback to published port
+      - "traefik.http.services.recharge-frontend.loadbalancer.server.url=http://127.0.0.1:3000"
 
   # 2. Django Backend API & Remotion Rendering Engine
   backend:
@@ -42,7 +43,8 @@ services:
       - "traefik.http.routers.recharge-backend.entrypoints=websecure"
       - "traefik.http.routers.recharge-backend.rule=Host(`api.srv1380471.hstgr.cloud`)"
       - "traefik.http.routers.recharge-backend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.recharge-backend.loadbalancer.server.port=8000"
+      # Traefik is in host network mode - must route via host loopback to published port
+      - "traefik.http.services.recharge-backend.loadbalancer.server.url=http://127.0.0.1:8000"
 
   # 3. Embedded WhatsApp Gateway (Express + whatsapp-web.js)
   whatsapp-gateway:
@@ -62,7 +64,8 @@ services:
       - "traefik.http.routers.recharge-whatsapp.entrypoints=websecure"
       - "traefik.http.routers.recharge-whatsapp.rule=Host(`whatsapp.srv1380471.hstgr.cloud`)"
       - "traefik.http.routers.recharge-whatsapp.tls.certresolver=letsencrypt"
-      - "traefik.http.services.recharge-whatsapp.loadbalancer.server.port=18789"
+      # Traefik is in host network mode - must route via host loopback to published port
+      - "traefik.http.services.recharge-whatsapp.loadbalancer.server.url=http://127.0.0.1:18789"
 
 volumes:
   backend-media:
