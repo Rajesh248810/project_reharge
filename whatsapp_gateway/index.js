@@ -23,26 +23,33 @@ const upload = multer({ dest: uploadsDir });
 let qrCodeData = null;
 let connectionStatus = 'INITIALIZING'; // 'INITIALIZING', 'QR_READY', 'CONNECTED', 'DISCONNECTED', 'AUTHENTICATING'
 
-// Recursive lock cleaner to prevent stale Chromium launches from failing in Docker volumes
+// Recursive lock cleaner using lstatSync to safely delete broken symbolic links (SingletonLock)
 const deleteSingletonLock = (dir) => {
     if (!fs.existsSync(dir)) return;
     try {
         const files = fs.readdirSync(dir);
         for (const file of files) {
             const filePath = path.join(dir, file);
-            if (fs.statSync(filePath).isDirectory()) {
-                deleteSingletonLock(filePath);
-            } else if (file === 'SingletonLock') {
-                try {
+            try {
+                const stat = fs.lstatSync(filePath);
+                if (stat.isDirectory()) {
+                    deleteSingletonLock(filePath);
+                } else if (file === 'SingletonLock' || stat.isSymbolicLink()) {
                     fs.unlinkSync(filePath);
                     console.log(`[WHATSAPP GATEWAY] Deleted stale Chromium lock: ${filePath}`);
-                } catch (err) {
-                    console.error(`[WHATSAPP GATEWAY] Failed to delete lock: ${err.message}`);
+                }
+            } catch (err) {
+                // Force delete the lock file if lstatSync fails or throws on it
+                if (file === 'SingletonLock') {
+                    try {
+                        fs.unlinkSync(filePath);
+                        console.log(`[WHATSAPP GATEWAY] Force deleted stale lock: ${filePath}`);
+                    } catch (e) {}
                 }
             }
         }
     } catch (err) {
-        console.error(`[WHATSAPP GATEWAY] Directory read error during lock cleanup: ${err.message}`);
+        console.error(`[WHATSAPP GATEWAY] Lock cleanup error: ${err.message}`);
     }
 };
 
