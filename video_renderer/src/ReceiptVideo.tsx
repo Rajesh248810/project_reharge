@@ -17,26 +17,6 @@ interface Props {
 }
 
 export const ReceiptVideo: React.FC<Props> = ({ name, price, date, lang }) => {
-  const [handle] = React.useState(() => delayRender());
-
-  React.useEffect(() => {
-    const loadOdiaFont = async () => {
-      try {
-        const font = new FontFace(
-          "Noto Sans Oriya",
-          "url(https://fonts.gstatic.com/s/notosansoriya/v31/x3djYyEw-HivM_1bXU91nN_44z-u0D0z.woff2)"
-        );
-        await font.load();
-        document.fonts.add(font);
-      } catch (err) {
-        console.error("Failed to load Odia font", err);
-      } finally {
-        continueRender(handle);
-      }
-    };
-    loadOdiaFont();
-  }, [handle]);
-
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -57,26 +37,26 @@ export const ReceiptVideo: React.FC<Props> = ({ name, price, date, lang }) => {
     extrapolateRight: 'clamp',
   });
 
-  // Multilingual translations
-  const title = lang === 'OD' ? 'ପେମେଣ୍ଟ ରସିଦ୍' : 'PAYMENT RECEIPT';
-  const subtitle = lang === 'OD' ? 'ସଫଳତାର ସହ ପ୍ରାପ୍ତ ହେଲା' : 'PAYMENT SUCCESSFUL';
-  const nameLabel = lang === 'OD' ? 'ଗ୍ରାହକ ନାମ:' : 'Subscriber Name:';
-  const priceLabel = lang === 'OD' ? 'ପେମେଣ୍ଟ ରାଶି:' : 'Amount Received:';
-  const dateLabel = lang === 'OD' ? 'ପରବର୍ତ୍ତୀ ଶେଷ ତାରିଖ:' : 'New Expiry Date:';
-  const statusLabel = lang === 'OD' ? 'ରିଚାର୍ଜ ସଫଳ ହେଲା' : 'Recharge Renewed';
-  const footerLabel = lang === 'OD' ? 'ଆମ ସହିତ ଯୋଡି ହୋଇଥିବାରୁ ଧନ୍ୟବାଦ!' : 'Thank you for your business & happy viewing!';
+  // English translations for Video (Odia rendering disabled due to headless constraints)
+  const title = 'PAYMENT RECEIVED';
+  const subtitle = 'THANK YOU FOR YOUR PAYMENT';
+  const nameLabel = 'Customer:';
+  const priceLabel = 'Amount Paid:';
+  const dateLabel = 'Payment Date:';
+  const statusLabel = 'Recharge Renewed';
+  const footerLabel = 'Your recharge was successful. Enjoy our services!';
 
   return (
     <AbsoluteFill
       style={{
-        backgroundColor: '#07090e',
-        background: 'radial-gradient(circle, #061f14 0%, #06080d 100%)',
-        fontFamily: lang === 'OD' ? "'Noto Sans Oriya', sans-serif" : "sans-serif",
+        backgroundColor: '#052e16', // Dark green background
+        background: 'radial-gradient(circle, #064e3b 0%, #022c22 100%)',
+        fontFamily: 'sans-serif',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        color: '#f3f4f6',
+        color: '#f0fdf4',
       }}
     >
       {/* Decorative success glowing orbs */}

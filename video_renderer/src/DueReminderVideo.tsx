@@ -17,26 +17,6 @@ interface Props {
 }
 
 export const DueReminderVideo: React.FC<Props> = ({ name, price, date, lang }) => {
-  const [handle] = React.useState(() => delayRender());
-
-  React.useEffect(() => {
-    const loadOdiaFont = async () => {
-      try {
-        const font = new FontFace(
-          "Noto Sans Oriya",
-          "url(https://fonts.gstatic.com/s/notosansoriya/v31/x3djYyEw-HivM_1bXU91nN_44z-u0D0z.woff2)"
-        );
-        await font.load();
-        document.fonts.add(font);
-      } catch (err) {
-        console.error("Failed to load Odia font", err);
-      } finally {
-        continueRender(handle);
-      }
-    };
-    loadOdiaFont();
-  }, [handle]);
-
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -57,20 +37,20 @@ export const DueReminderVideo: React.FC<Props> = ({ name, price, date, lang }) =
     extrapolateRight: 'clamp',
   });
 
-  // Multilingual translations
-  const title = lang === 'OD' ? 'କେବୁଲ୍ ଟିଭି ନୋଟିସ୍' : 'CABLE TV NOTICE';
-  const subtitle = lang === 'OD' ? 'ପ୍ଲାନ ସମାପ୍ତ ହେଉଛି' : 'PLAN EXPIRING SOON';
-  const nameLabel = lang === 'OD' ? 'ଗ୍ରାହକ:' : 'Customer:';
-  const priceLabel = lang === 'OD' ? 'ପେମେଣ୍ଟ ରାଶି:' : 'Outstanding Price:';
-  const dateLabel = lang === 'OD' ? 'ଶେଷ ତାରିଖ:' : 'Expiry Date:';
-  const footerLabel = lang === 'OD' ? 'ସେବା ଜାରି ରଖିବା ପାଇଁ ଦୟାକରି ରିଚାର୍ଜ କରନ୍ତୁ।' : 'Please pay to avoid connection suspension. Thank you!';
+  // English translations for Video (Odia rendering disabled due to headless constraints)
+  const title = 'CABLE TV NOTICE';
+  const subtitle = 'PLAN EXPIRING SOON';
+  const nameLabel = 'Customer:';
+  const priceLabel = 'Outstanding Price:';
+  const dateLabel = 'Expiry Date:';
+  const footerLabel = 'Please pay to avoid connection suspension. Thank you!';
 
   return (
     <AbsoluteFill
       style={{
         backgroundColor: '#07090e',
         background: 'radial-gradient(circle, #0f1322 0%, #06080d 100%)',
-        fontFamily: lang === 'OD' ? "'Noto Sans Oriya', sans-serif" : "sans-serif",
+        fontFamily: 'sans-serif',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
