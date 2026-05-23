@@ -23,14 +23,41 @@ const upload = multer({ dest: uploadsDir });
 let qrCodeData = null;
 let connectionStatus = 'INITIALIZING'; // 'INITIALIZING', 'QR_READY', 'CONNECTED', 'DISCONNECTED', 'AUTHENTICATING'
 
+// Recursive lock cleaner to prevent stale Chromium launches from failing in Docker volumes
+const deleteSingletonLock = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    try {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+            const filePath = path.join(dir, file);
+            if (fs.statSync(filePath).isDirectory()) {
+                deleteSingletonLock(filePath);
+            } else if (file === 'SingletonLock') {
+                try {
+                    fs.unlinkSync(filePath);
+                    console.log(`[WHATSAPP GATEWAY] Deleted stale Chromium lock: ${filePath}`);
+                } catch (err) {
+                    console.error(`[WHATSAPP GATEWAY] Failed to delete lock: ${err.message}`);
+                }
+            }
+        }
+    } catch (err) {
+        console.error(`[WHATSAPP GATEWAY] Directory read error during lock cleanup: ${err.message}`);
+    }
+};
+
+const authDir = path.join(__dirname, '.wwebjs_auth');
+deleteSingletonLock(authDir);
+
 console.log('[WHATSAPP GATEWAY] Starting embedded WhatsApp engine...');
 
 const client = new Client({
     authStrategy: new LocalAuth({
-        dataPath: path.join(__dirname, '.wwebjs_auth')
+        dataPath: authDir
     }),
     puppeteer: {
         headless: true,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
