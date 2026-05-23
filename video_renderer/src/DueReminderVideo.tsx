@@ -9,18 +9,6 @@ import {
   continueRender
 } from 'remotion';
 
-const waitForFont = delayRender();
-const font = new FontFace(
-  "Noto Sans Oriya",
-  "url(https://fonts.gstatic.com/s/notosansoriya/v26/x3djYyEw-HivM_1bXU91nN_44z-u0D0z.woff2)"
-);
-font.load().then(() => {
-  document.fonts.add(font);
-  continueRender(waitForFont);
-}).catch(() => {
-  continueRender(waitForFont);
-});
-
 interface Props {
   name: string;
   price: number;
@@ -29,6 +17,26 @@ interface Props {
 }
 
 export const DueReminderVideo: React.FC<Props> = ({ name, price, date, lang }) => {
+  const [handle] = React.useState(() => delayRender());
+
+  React.useEffect(() => {
+    const loadOdiaFont = async () => {
+      try {
+        const font = new FontFace(
+          "Noto Sans Oriya",
+          "url(https://fonts.gstatic.com/s/notosansoriya/v31/x3djYyEw-HivM_1bXU91nN_44z-u0D0z.woff2)"
+        );
+        await font.load();
+        document.fonts.add(font);
+      } catch (err) {
+        console.error("Failed to load Odia font", err);
+      } finally {
+        continueRender(handle);
+      }
+    };
+    loadOdiaFont();
+  }, [handle]);
+
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
